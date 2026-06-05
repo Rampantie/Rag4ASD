@@ -27,10 +27,11 @@ export async function extractProfile(file, onProgress) {
 }
 
 // POST /api/case/ask
-export async function askQuestion({ question, profile, config }, onProgress) {
+export async function askQuestion({ question, profile, config, history = [] }, onProgress) {
   onProgress?.({ stage: '安全护栏', detail: '校验问题风险等级' })
 
-  onProgress?.({ stage: '检索', detail: `从文献库召回 Top-${config.topK} 相关片段` })
+  const turnHint = history.length ? `（第 ${history.length + 1} 轮，含上下文）` : ''
+  onProgress?.({ stage: '检索', detail: `从文献库召回 Top-${config.topK} 相关片段${turnHint}` })
   if (config.enableWebSearch) {
     onProgress?.({ stage: '网络检索', detail: 'Tavily 补充查询相关背景…' })
   }
@@ -41,6 +42,7 @@ export async function askQuestion({ question, profile, config }, onProgress) {
     body: JSON.stringify({
       question,
       profile,
+      history,
       config: {
         model: config.model,
         topK: config.topK,
@@ -49,6 +51,6 @@ export async function askQuestion({ question, profile, config }, onProgress) {
     }),
   })
 
-  onProgress?.({ stage: '生成', detail: `${config.model} 综合文献与网络参考组织建议` })
+  onProgress?.({ stage: '生成', detail: `${config.model} 结合对话历史与文献组织建议` })
   return parseJson(res)
 }

@@ -2,8 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { extractProfile, askQuestion, MODELS } from '../api/consult.js'
 import ConsultAnswer from '../components/ConsultAnswer.jsx'
 import { addHistoryRecord } from '../lib/consultHistory.js'
+import { buildApiHistory, countTurns } from '../lib/consultChat.js'
 
-// 把「年龄 / 核心表现 / 既往评估」做成可编辑画像，供用户按孩子真实情况修正后再提问
 function emptyProfile() {
   return { sourceName: '', age: '', coreSymptoms: [], assessments: [], note: '' }
 }
@@ -12,15 +12,17 @@ export default function Consult() {
   const [profile, setProfile] = useState(null)
   const [extracting, setExtracting] = useState(false)
   const [extractStage, setExtractStage] = useState('')
-  const [messages, setMessages] = useState([]) // {role, ...}
+  const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [thinking, setThinking] = useState(false)
-  const [thinkStage, setThinkStage] = useState(null) // {stage, detail}
+  const [thinkStage, setThinkStage] = useState(null)
   const [model, setModel] = useState(MODELS[0])
   const [topK, setTopK] = useState(4)
   const [enableWebSearch, setEnableWebSearch] = useState(false)
   const fileRef = useRef(null)
   const chatEndRef = useRef(null)
+
+  const turnCount = countTurns(messages)
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -57,13 +59,14 @@ export default function Consult() {
     const q = input.trim()
     if (!q || thinking) return
     const config = { model, topK, enableWebSearch }
+    const history = buildApiHistory(messages)
     setInput('')
     setMessages((m) => [...m, { role: 'user', text: q }])
     setThinking(true)
     let ans
     try {
       ans = await askQuestion(
-        { question: q, profile, config },
+        { question: q, profile, config, history },
         (e) => setThinkStage(e),
       )
       setMessages((m) => [...m, { role: 'assistant', data: ans }])
@@ -86,7 +89,6 @@ export default function Consult() {
 
   return (
     <div className="consult-page">
-      {/* 左：个案上下文 */}
       <aside className="case-panel">
         <h2 className="panel-title">个案上下文</h2>
 
@@ -147,33 +149,66 @@ export default function Consult() {
         <button className="btn btn-outline btn-block" onClick={clearSession}>清空会话</button>
       </aside>
 
-      {/* 右：对话区 */}
       <section className="chat-panel">
+        <div className="chat-head">
+          <div>
+            <h3 className="chat-head-title">多轮咨询</h3>
+            <p className="chat-head-sub">
+              {turnCount > 0
+                ? `已进行 ${turnCount} 轮对话，追问将自动带上前文语境`
+                : '支持连续追问，例如先问干预方向，再问「在家每天怎么安排」'}
+            </p>
+          </div>
+          {turnCount > 0 && <span className="chat-turn-badge">{turnCount} 轮</span>}
+        </div>
+
         <div className="chat-scroll">
           {messages.length === 0 && !thinking && (
             <div className="chat-empty">
               <div className="ce-icon">💬</div>
               <h3>开始咨询</h3>
               <p>可先上传成长报告以获得更贴合孩子的建议，也可直接提问。<br />例如：「孩子 3 岁不进行眼神交流、无语言，家庭可以做哪些早期干预？」</p>
+              <p className="ce-hint">追问示例：「那在家每天 30 分钟可以怎么安排？」</p>
               <p className="ce-warn">⚠ 涉及用药、剂量、急症、确诊等问题，系统将拒答并建议线下就医。</p>
             </div>
           )}
 
-          {messages.map((m, i) =>
-            m.role === 'user' ? (
-              <div className="msg msg-user" key={i}><div className="bubble">{m.text}</div></div>
+          {messages.map((m, i) => {
+            const turnNo = messages.slice(0, i + 1).filter((x) => x.role === 'user').length
+            return m.role === 'user' ? (
+              <div className="msg msg-user" key={i}>
+                <div className="msg-body">
+                  <div className="msg-meta">
+                    <span className="msg-name">你</span>
+                    {turnCount > 1 && <span className="msg-turn">第 {turnNo} 轮</span>}
+                  </div>
+                  <div className="bubble bubble-user">{m.text}</div>
+                </div>
+                <div className="msg-avatar msg-avatar-user" aria-hidden>你</div>
+              </div>
             ) : (
               <div className="msg msg-bot" key={i}>
-                <div className="bubble bubble-bot"><ConsultAnswer data={m.data} /></div>
+                <div className="msg-avatar msg-avatar-bot" aria-hidden>✦</div>
+                <div className="msg-body">
+                  <div className="msg-meta">
+                    <span className="msg-name">星语助手</span>
+                    {turnCount > 1 && <span className="msg-turn">第 {turnNo} 轮</span>}
+                  </div>
+                  <div className="bubble bubble-bot"><ConsultAnswer data={m.data} /></div>
+                </div>
               </div>
-            ),
-          )}
+            )
+          })}
 
           {thinking && (
             <div className="msg msg-bot">
-              <div className="bubble bubble-bot thinking">
-                <span className="spinner" />
-                {thinkStage ? `${thinkStage.stage}：${thinkStage.detail}` : '处理中…'}
+              <div className="msg-avatar msg-avatar-bot" aria-hidden>✦</div>
+              <div className="msg-body">
+                <div className="msg-meta"><span className="msg-name">星语助手</span></div>
+                <div className="bubble bubble-bot thinking">
+                  <span className="spinner" />
+                  {thinkStage ? `${thinkStage.stage}：${thinkStage.detail}` : '处理中…'}
+                </div>
               </div>
             </div>
           )}
@@ -183,7 +218,9 @@ export default function Consult() {
         <div className="chat-input">
           <textarea
             value={input}
-            placeholder="描述孩子的情况并提问…（Enter 发送，Shift+Enter 换行）"
+            placeholder={turnCount > 0
+              ? '继续追问…（Enter 发送，Shift+Enter 换行）'
+              : '描述孩子的情况并提问…（Enter 发送，Shift+Enter 换行）'}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={onKeyDown}
             rows={1}

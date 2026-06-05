@@ -137,6 +137,32 @@ def test_normalize_literature_missing():
     print("literatureMissing + webCitations OK")
 
 
+def test_multi_turn_prompt():
+    print("=== build_user_prompt (多轮 history) ===")
+    from backend.llm.prompts import build_user_prompt
+    from backend.routers.consult import HistoryTurn, _build_retrieval_query, _normalize_history
+
+    history = _normalize_history([
+        HistoryTurn(question="孩子3岁无语言怎么办？", answerSummary="建议增加共同关注与模仿游戏。"),
+    ])
+    prompt = build_user_prompt(
+        question="那在家每天30分钟怎么安排？",
+        profile_text="年龄：3岁",
+        chunks=[{"source": "指南.pdf", "loc": "p.2", "snippet": "家庭训练应短时高频。"}],
+        history=history,
+    )
+    assert "【对话历史" in prompt
+    assert "孩子3岁无语言怎么办？" in prompt
+    assert "共同关注" in prompt
+    assert "【当前问题】" in prompt
+    assert "30分钟" in prompt
+
+    query = _build_retrieval_query("那在家每天30分钟怎么安排？", None, history)
+    assert "孩子3岁无语言" in query
+    assert "30分钟" in query
+    print("multi-turn prompt OK")
+
+
 def test_insufficient_no_literature_no_web():
     print("=== insufficient (无文献 + 无网络) ===")
     from backend.routers.consult import _insufficient_response
@@ -157,6 +183,7 @@ def main() -> int:
 
     test_web_search_module()
     test_normalize_literature_missing()
+    test_multi_turn_prompt()
     test_insufficient_no_literature_no_web()
     test_profile()
     test_refused()

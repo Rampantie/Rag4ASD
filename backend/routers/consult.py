@@ -43,10 +43,19 @@ class AskConfig(BaseModel):
     enableWebSearch: bool = False
 
 
+class HistoryTurn(BaseModel):
+    question: str
+    answerSummary: str = ""
+
+
 class AskRequest(BaseModel):
     question: str
     profile: ProfileData | None = None
+    history: list[HistoryTurn] = Field(default_factory=list)
     config: AskConfig = Field(default_factory=AskConfig)
+
+
+MAX_HISTORY_TURNS = 5
 
 
 def _resolve_model(name: str) -> str:
@@ -66,11 +75,31 @@ def _profile_text(profile: ProfileData | None) -> str:
     return "；".join(parts)
 
 
-def _build_retrieval_query(question: str, profile: ProfileData | None) -> str:
+def _normalize_history(history: list[HistoryTurn]) -> list[dict[str, str]]:
+    turns: list[dict[str, str]] = []
+    for turn in history[-MAX_HISTORY_TURNS:]:
+        q = turn.question.strip()
+        if not q:
+            continue
+        summary = turn.answerSummary.strip()
+        turns.append({"question": q, "answerSummary": summary})
+    return turns
+
+
+def _build_retrieval_query(
+    question: str,
+    profile: ProfileData | None,
+    history: list[dict[str, str]] | None = None,
+) -> str:
+    parts: list[str] = []
+    if history:
+        parts.append(history[-1]["question"])
+    parts.append(question)
+    query = " ".join(parts)
     profile_part = _profile_text(profile)
     if profile_part:
-        return f"{question}\n个案：{profile_part}"
-    return question
+        return f"{query}\n个案：{profile_part}"
+    return query
 
 
 def _format_citations(chunks: list[dict]) -> list[dict]:
@@ -298,7 +327,8 @@ def ask_case(body: AskRequest):
 
     top_k = max(1, min(body.config.topK, 10))
     profile_text = _profile_text(body.profile)
-    query = _build_retrieval_query(question, body.profile)
+    history = _normalize_history(body.history)
+    query = _build_retrieval_query(question, body.profile, history)
 
     embed_client = get_embedding_client()
     query_vec = embed_client.embed([query])[0]
@@ -334,6 +364,7 @@ def ask_case(body: AskRequest):
         profile_text=profile_text,
         chunks=chunks,
         web_hits=web_hits,
+        history=history,
     )
 
     try:

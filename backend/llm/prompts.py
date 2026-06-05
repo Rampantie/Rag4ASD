@@ -8,6 +8,7 @@ SYSTEM_PROMPT = """你是孤独症（ASD）早期干预的循证信息助手，�
 3. 网络参考编号 [W1][W2] 仅作补充背景，可带 webRefs，不得替代文献或当作权威依据。
 4. 若文献不足以回答，仍须在 suggestions 中返回说明；无文献仅有网络时，只能给方向性补充，须在 cautions 中声明「未命中本地权威文献」。
 5. 不要给出用药剂量、确诊结论或急症处理方案。
+6. 若存在【对话历史】，当前问题是追问；请结合历史语境作答，但文献引用编号 refs 仅对应本次【文献片段】中的 [1][2]。
 
 请严格输出 JSON，不要包含 markdown 代码块或其它文字。JSON 结构：
 {
@@ -29,8 +30,24 @@ def build_user_prompt(
     profile_text: str,
     chunks: list[dict],
     web_hits: list[dict] | None = None,
+    history: list[dict] | None = None,
 ) -> str:
-    lines = ["【个案画像】", profile_text or "（未提供）", "", "【文献片段】"]
+    lines = ["【个案画像】", profile_text or "（未提供）", ""]
+
+    if history:
+        lines.append("【对话历史（理解追问语境；文献编号以本次片段为准）】")
+        for turn in history:
+            lines.append(f"用户：{turn.get('question', '')}")
+            summary = (turn.get("answerSummary") or turn.get("answer_summary") or "").strip()
+            if summary:
+                lines.append(f"助手：{summary}")
+            lines.append("")
+    else:
+        lines.append("【对话历史】")
+        lines.append("（首轮提问，无历史）")
+        lines.append("")
+
+    lines.extend(["【文献片段】"])
     if not chunks:
         lines.append("（知识库暂无相关文献片段）")
     else:
@@ -50,5 +67,5 @@ def build_user_prompt(
             lines.append(w.get("snippet", ""))
             lines.append("")
 
-    lines.extend(["【用户问题】", question])
+    lines.extend(["【当前问题】", question])
     return "\n".join(lines)
