@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { getStats } from '../api/literature.js'
 
 const STEPS = [
   { n: '1', title: '上传权威文献', desc: '导入指南、同行评议文献等，系统切分、向量化构建知识库。', icon: '📚' },
@@ -12,11 +13,13 @@ const ACK_KEY = 'asd_disclaimer_acknowledged'
 export default function Home() {
   const navigate = useNavigate()
   const [acked, setAcked] = useState(true)
-  // 演示占位：真实数值后续从后端 /api/documents 读取
-  const [docCount] = useState(0)
+  const [docCount, setDocCount] = useState(0)
 
   useEffect(() => {
     setAcked(localStorage.getItem(ACK_KEY) === '1')
+    getStats()
+      .then((s) => setDocCount(s.docCount))
+      .catch(() => setDocCount(0))
   }, [])
 
   const acknowledge = () => {
@@ -97,7 +100,7 @@ export default function Home() {
           <div className="status-num">{docCount}</div>
           <div className="status-label">
             篇文献已入库
-            <span className="status-hint">（演示数据，接入后端后实时显示）</span>
+            <span className="status-hint">（来自知识库实时统计）</span>
           </div>
           <button className="btn btn-outline" onClick={() => navigate('/literature')}>
             {docCount === 0 ? '先去上传文献' : '管理知识库'}

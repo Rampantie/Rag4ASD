@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { getDocuments, getStats, deleteDocument, ingestDocuments, TAGS } from '../api/literatureMock.js'
+import { getDocuments, getStats, deleteDocument, ingestDocuments, TAGS } from '../api/literature.js'
 
 function fmtTime(iso) {
   const d = new Date(iso)
@@ -46,18 +46,24 @@ export default function Literature() {
     if (!pending.length || ingesting) return
     setIngesting(true)
     setLogs([])
-    await ingestDocuments(
-      pending,
-      { tag, chunkSize: Number(chunkSize), overlap: Number(overlap) },
-      (p) => {
-        setProgress(p)
-        setLogs((prev) => [`[${p.fileIndex + 1}/${p.total}] ${p.stage}：${p.detail}`, ...prev].slice(0, 60))
-      },
-    )
-    setIngesting(false)
-    setProgress(null)
-    setPending([])
-    await refresh()
+    try {
+      await ingestDocuments(
+        pending,
+        { tag, chunkSize: Number(chunkSize), overlap: Number(overlap) },
+        (p) => {
+          setProgress(p)
+          setLogs((prev) => [`[${p.fileIndex + 1}/${p.total}] ${p.stage}：${p.detail}`, ...prev].slice(0, 60))
+        },
+      )
+      setPending([])
+      await refresh()
+    } catch (err) {
+      setLogs((prev) => [`错误：${err.message}`, ...prev])
+      window.alert(`入库失败：${err.message}`)
+    } finally {
+      setIngesting(false)
+      setProgress(null)
+    }
   }
 
   const onDelete = async (doc) => {

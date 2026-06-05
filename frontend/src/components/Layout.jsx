@@ -5,7 +5,6 @@ const NAV = [
   { to: '/literature', label: '文献知识库' },
   { to: '/consult', label: '个案咨询' },
   { to: '/history', label: '咨询历史' },
-  { to: '/experiment', label: '实验对比' },
 ]
 
 export default function Layout() {
