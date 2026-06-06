@@ -83,6 +83,13 @@ body {
 .btn-outline { background: var(--white); color: var(--teal-700); border: 1.5px solid var(--line); }
 .btn-outline:hover { border-color: var(--teal-500); }
 .btn-block { width: 100%; margin-top: 20px; }
+a.btn {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
 
 /* ---------- Hero ---------- */
 .hero { text-align: center; padding: 36px 0 20px; }
@@ -212,7 +219,8 @@ body {
 .empty-state { text-align: center; padding: 70px 20px; color: var(--ink-soft); }
 .empty-icon { font-size: 46px; }
 .empty-state h3 { margin: 14px 0 6px; color: var(--teal-700); }
-.empty-state p { font-size: 14px; }
+.empty-state p { font-size: 14px; max-width: 420px; margin-left: auto; margin-right: auto; }
+.empty-state-actions { margin-top: 24px; display: flex; justify-content: center; }
 
 .doc-list { display: flex; flex-direction: column; }
 .doc-row {
@@ -326,9 +334,24 @@ body {
   background: #fff4ed; border: 1px solid #ffd4b8; border-radius: 8px;
   padding: 10px 12px; font-size: 13px; color: #d45a28; margin-bottom: 12px;
 }
-.web-search-toggle { display: flex; flex-direction: column; gap: 4px; font-size: 13px; margin-top: 8px; }
-.web-search-toggle input { margin-right: 6px; }
-.web-search-hint { font-size: 11px; color: var(--ink-soft); opacity: .85; }
+.case-config .web-search-toggle {
+  display: flex; flex-direction: column; gap: 6px;
+  margin-top: 0; padding: 10px 12px;
+  background: var(--teal-50); border-radius: 10px; border: 1px solid var(--line);
+  cursor: pointer;
+}
+.web-search-row {
+  display: flex; align-items: center; gap: 8px;
+  color: var(--ink); font-size: 13px; font-weight: 600;
+}
+.web-search-toggle input[type=checkbox] {
+  width: 16px; height: 16px; margin: 0; flex-shrink: 0;
+  accent-color: var(--teal-600); cursor: pointer;
+}
+.web-search-hint {
+  display: block; padding-left: 24px;
+  font-size: 11px; color: var(--ink-soft); line-height: 1.5;
+}
 .ans-cite { margin: 8px 0 12px; background: var(--white); border: 1px solid var(--line); border-radius: 10px; padding: 4px 12px; }
 .ans-web-cite { border-color: #ffd4b8; background: #fff7f2; }
 .ans-cite summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--teal-700); padding: 6px 0; }

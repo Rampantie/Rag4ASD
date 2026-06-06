@@ -55,7 +55,9 @@ export default function History() {
           <div className="empty-icon">🕘</div>
           <h3>暂无咨询记录</h3>
           <p>在「个案咨询」页提问后，问答会显示在这里，方便你在本标签页内回溯。</p>
-          <Link to="/consult" className="btn btn-primary" style={{ marginTop: 20 }}>开始咨询</Link>
+          <div className="empty-state-actions">
+            <Link to="/consult" className="btn btn-primary">开始咨询</Link>
+          </div>
         </div>
       ) : (
         <div className="history-list">

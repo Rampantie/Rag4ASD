@@ -136,12 +136,14 @@ export default function Consult() {
             <input type="range" min="1" max="10" value={topK} onChange={(e) => setTopK(Number(e.target.value))} />
           </label>
           <label className="web-search-toggle">
-            <input
-              type="checkbox"
-              checked={enableWebSearch}
-              onChange={(e) => setEnableWebSearch(e.target.checked)}
-            />
-            启用网络补充检索
+            <span className="web-search-row">
+              <input
+                type="checkbox"
+                checked={enableWebSearch}
+                onChange={(e) => setEnableWebSearch(e.target.checked)}
+              />
+              <span className="web-search-label">启用网络补充检索</span>
+            </span>
             <span className="web-search-hint">默认关 · 网络来源仅供参考，文献仍是主依据</span>
           </label>
         </div>
